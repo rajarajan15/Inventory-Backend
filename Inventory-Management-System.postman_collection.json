@@ -5,20 +5,22 @@
     "description": "Collection of REST endpoints for the Inventory Management System backend (Spring Boot + PostgreSQL + JWT)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "const xsrfToken = pm.cookies.get('XSRF-TOKEN');",
+          "if (xsrfToken) { pm.request.headers.upsert({ key: 'X-XSRF-TOKEN', value: xsrfToken }); }"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
   "variable": [
     {
       "key": "baseUrl",
       "value": "http://localhost:8080",
-      "type": "string"
-    },
-    {
-      "key": "token",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "refreshToken",
-      "value": "",
       "type": "string"
     }
   ],
@@ -36,26 +38,19 @@
       }
     },
     {
-      "name": "2. Auth - Login as Admin",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "var jsonData = pm.response.json();",
-              "if (jsonData.accessToken) {",
-              "    pm.collectionVariables.set('token', jsonData.accessToken);",
-              "    console.log('Saved access token');",
-              "}",
-              "if (jsonData.refreshToken) {",
-              "    pm.collectionVariables.set('refreshToken', jsonData.refreshToken);",
-              "    console.log('Saved refresh token:', jsonData.refreshToken);",
-              "}"
-            ],
-            "type": "text/javascript"
-          }
+      "name": "2. CSRF - Initialize Browser Session",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/csrf",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "csrf"]
         }
-      ],
+      }
+    },
+    {
+      "name": "3. Auth - Login as Admin",
       "request": {
         "method": "POST",
         "header": [
@@ -76,26 +71,7 @@
       }
     },
     {
-      "name": "3. Auth - Login as Staff",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "var jsonData = pm.response.json();",
-              "if (jsonData.accessToken) {",
-              "    pm.collectionVariables.set('token', jsonData.accessToken);",
-              "    console.log('Saved access token');",
-              "}",
-              "if (jsonData.refreshToken) {",
-              "    pm.collectionVariables.set('refreshToken', jsonData.refreshToken);",
-              "    console.log('Saved refresh token:', jsonData.refreshToken);",
-              "}"
-            ],
-            "type": "text/javascript"
-          }
-        }
-      ],
+      "name": "4. Auth - Login as Staff",
       "request": {
         "method": "POST",
         "header": [
@@ -116,7 +92,7 @@
       }
     },
     {
-      "name": "4. Auth - Register New User",
+      "name": "5. Auth - Register New User",
       "request": {
         "method": "POST",
         "header": [
@@ -140,12 +116,7 @@
       "name": "5. Categories - List All",
       "request": {
         "method": "GET",
-        "header": [
-          {
-            "key": "Authorization",
-            "value": "Bearer {{token}}"
-          }
-        ],
+        "header": [],
         "url": {
           "raw": "{{baseUrl}}/api/categories",
           "host": ["{{baseUrl}}"],
@@ -161,10 +132,6 @@
           {
             "key": "Content-Type",
             "value": "application/json"
-          },
-          {
-            "key": "Authorization",
-            "value": "Bearer {{token}}"
           }
         ],
         "body": {
@@ -182,12 +149,7 @@
       "name": "7. Products - List All",
       "request": {
         "method": "GET",
-        "header": [
-          {
-            "key": "Authorization",
-            "value": "Bearer {{token}}"
-          }
-        ],
+        "header": [],
         "url": {
           "raw": "{{baseUrl}}/api/products",
           "host": ["{{baseUrl}}"],
@@ -199,12 +161,7 @@
       "name": "8. Products - Search and Filter",
       "request": {
         "method": "GET",
-        "header": [
-          {
-            "key": "Authorization",
-            "value": "Bearer {{token}}"
-          }
-        ],
+        "header": [],
         "url": {
           "raw": "{{baseUrl}}/api/products?search=Mouse",
           "host": ["{{baseUrl}}"],
@@ -222,12 +179,7 @@
       "name": "9. Products - Low Stock Alert List",
       "request": {
         "method": "GET",
-        "header": [
-          {
-            "key": "Authorization",
-            "value": "Bearer {{token}}"
-          }
-        ],
+        "header": [],
         "url": {
           "raw": "{{baseUrl}}/api/products/low-stock",
           "host": ["{{baseUrl}}"],
@@ -243,10 +195,6 @@
           {
             "key": "Content-Type",
             "value": "application/json"
-          },
-          {
-            "key": "Authorization",
-            "value": "Bearer {{token}}"
           }
         ],
         "body": {
@@ -268,10 +216,6 @@
           {
             "key": "Content-Type",
             "value": "application/json"
-          },
-          {
-            "key": "Authorization",
-            "value": "Bearer {{token}}"
           }
         ],
         "body": {
@@ -293,10 +237,6 @@
           {
             "key": "Content-Type",
             "value": "application/json"
-          },
-          {
-            "key": "Authorization",
-            "value": "Bearer {{token}}"
           }
         ],
         "body": {
@@ -318,10 +258,6 @@
           {
             "key": "Content-Type",
             "value": "application/json"
-          },
-          {
-            "key": "Authorization",
-            "value": "Bearer {{token}}"
           }
         ],
         "body": {
@@ -339,12 +275,7 @@
       "name": "14. Users - List Users (Admin Only)",
       "request": {
         "method": "GET",
-        "header": [
-          {
-            "key": "Authorization",
-            "value": "Bearer {{token}}"
-          }
-        ],
+        "header": [],
         "url": {
           "raw": "{{baseUrl}}/api/users",
           "host": ["{{baseUrl}}"],
@@ -353,34 +284,10 @@
       }
     },
     {
-      "name": "15. Auth - Refresh Access Token",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "var jsonData = pm.response.json();",
-              "if (jsonData.accessToken) {",
-              "    pm.collectionVariables.set('token', jsonData.accessToken);",
-              "    console.log('Refreshed access token successfully');",
-              "}"
-            ],
-            "type": "text/javascript"
-          }
-        }
-      ],
+      "name": "16. Auth - Refresh Access Token",
       "request": {
         "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
-        },
+        "header": [],
         "url": {
           "raw": "{{baseUrl}}/api/auth/refresh",
           "host": ["{{baseUrl}}"],
@@ -389,19 +296,10 @@
       }
     },
     {
-      "name": "16. Auth - Logout (Revoke Refresh Token)",
+      "name": "17. Auth - Logout (Revoke Refresh Token)",
       "request": {
         "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
-        },
+        "header": [],
         "url": {
           "raw": "{{baseUrl}}/api/auth/logout",
           "host": ["{{baseUrl}}"],

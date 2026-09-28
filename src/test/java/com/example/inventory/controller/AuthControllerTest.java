@@ -14,12 +14,15 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import jakarta.servlet.http.Cookie;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -40,7 +43,7 @@ class AuthControllerTest {
     @Test
     void testRegisterEndpoint_Success() throws Exception {
         RegisterRequest request = new RegisterRequest("Test User", "test@example.com", "Password@123", Role.STAFF);
-        AuthResponse response = new AuthResponse("mock-token", 1L, "Test User", "test@example.com", Role.STAFF);
+        AuthResponse response = new AuthResponse("mock-token", "mock-refresh-token", 1L, "Test User", "test@example.com", Role.STAFF);
 
         when(authService.register(any(RegisterRequest.class))).thenReturn(response);
 
@@ -48,7 +51,8 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.token").value("mock-token"))
+                .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("access_token=mock-token")))
+                .andExpect(jsonPath("$.accessToken").doesNotExist())
                 .andExpect(jsonPath("$.email").value("test@example.com"))
                 .andExpect(jsonPath("$.role").value("STAFF"));
     }
@@ -56,7 +60,7 @@ class AuthControllerTest {
     @Test
     void testLoginEndpoint_Success() throws Exception {
         LoginRequest request = new LoginRequest("test@example.com", "Password@123");
-        AuthResponse response = new AuthResponse("mock-token", 1L, "Test User", "test@example.com", Role.STAFF);
+        AuthResponse response = new AuthResponse("mock-token", "mock-refresh-token", 1L, "Test User", "test@example.com", Role.STAFF);
 
         when(authService.login(any(LoginRequest.class))).thenReturn(response);
 
@@ -64,7 +68,8 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").value("mock-token"))
+                .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("access_token=mock-token")))
+                .andExpect(jsonPath("$.accessToken").doesNotExist())
                 .andExpect(jsonPath("$.email").value("test@example.com"));
     }
 
@@ -82,16 +87,16 @@ class AuthControllerTest {
 
     @Test
     void testRefreshTokenEndpoint_Success() throws Exception {
-        com.example.inventory.dto.RefreshTokenRequest request = new com.example.inventory.dto.RefreshTokenRequest("valid-refresh-token");
         com.example.inventory.dto.TokenRefreshResponse response = new com.example.inventory.dto.TokenRefreshResponse("new-access-token", "valid-refresh-token");
 
         when(authService.refreshToken(any(com.example.inventory.dto.RefreshTokenRequest.class))).thenReturn(response);
 
         mockMvc.perform(post("/api/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .cookie(new Cookie("refresh_token", "valid-refresh-token"))
+                        .with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accessToken").value("new-access-token"))
-                .andExpect(jsonPath("$.refreshToken").value("valid-refresh-token"));
+                .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("access_token=new-access-token")))
+                .andExpect(jsonPath("$.accessToken").doesNotExist())
+                .andExpect(jsonPath("$.message").value("Access token refreshed"));
     }
 }
