@@ -79,4 +79,19 @@ class AuthControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.validationErrors").exists());
     }
+
+    @Test
+    void testRefreshTokenEndpoint_Success() throws Exception {
+        com.example.inventory.dto.RefreshTokenRequest request = new com.example.inventory.dto.RefreshTokenRequest("valid-refresh-token");
+        com.example.inventory.dto.TokenRefreshResponse response = new com.example.inventory.dto.TokenRefreshResponse("new-access-token", "valid-refresh-token");
+
+        when(authService.refreshToken(any(com.example.inventory.dto.RefreshTokenRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("new-access-token"))
+                .andExpect(jsonPath("$.refreshToken").value("valid-refresh-token"));
+    }
 }

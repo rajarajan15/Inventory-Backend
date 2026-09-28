@@ -3,6 +3,7 @@ package com.example.inventory.service;
 import com.example.inventory.dto.AuthResponse;
 import com.example.inventory.dto.LoginRequest;
 import com.example.inventory.dto.RegisterRequest;
+import com.example.inventory.entity.RefreshToken;
 import com.example.inventory.entity.Role;
 import com.example.inventory.entity.User;
 import com.example.inventory.exception.BadRequestException;
@@ -40,6 +41,9 @@ class AuthServiceTest {
     @Mock
     private AuthenticationManager authenticationManager;
 
+    @Mock
+    private RefreshTokenService refreshTokenService;
+
     @InjectMocks
     private AuthService authService;
 
@@ -58,11 +62,15 @@ class AuthServiceTest {
         when(passwordEncoder.encode("plainPassword")).thenReturn("encodedPassword");
         when(userRepository.save(any(User.class))).thenReturn(testUser);
         when(jwtService.generateToken(any(), any(User.class))).thenReturn("mock-jwt-token");
+        RefreshToken mockRefresh = new RefreshToken(1L, testUser, "mock-refresh-token", java.time.Instant.now().plusSeconds(3600), false, java.time.Instant.now());
+        when(refreshTokenService.createRefreshToken(any())).thenReturn(mockRefresh);
 
         AuthResponse response = authService.register(request);
 
         assertNotNull(response);
         assertEquals("mock-jwt-token", response.getToken());
+        assertEquals("mock-jwt-token", response.getAccessToken());
+        assertEquals("mock-refresh-token", response.getRefreshToken());
         assertEquals("alice@example.com", response.getEmail());
         assertEquals(Role.STAFF, response.getRole());
     }
@@ -84,11 +92,14 @@ class AuthServiceTest {
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(null);
         when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(testUser));
         when(jwtService.generateToken(any(), any(User.class))).thenReturn("mock-jwt-token");
+        RefreshToken mockRefresh = new RefreshToken(1L, testUser, "mock-refresh-token", java.time.Instant.now().plusSeconds(3600), false, java.time.Instant.now());
+        when(refreshTokenService.createRefreshToken(any())).thenReturn(mockRefresh);
 
         AuthResponse response = authService.login(request);
 
         assertNotNull(response);
         assertEquals("mock-jwt-token", response.getToken());
+        assertEquals("mock-refresh-token", response.getRefreshToken());
         assertEquals(1L, response.getId());
     }
 
@@ -100,5 +111,30 @@ class AuthServiceTest {
                 .thenThrow(new BadCredentialsException("Bad credentials"));
 
         assertThrows(BadCredentialsException.class, () -> authService.login(request));
+    }
+
+    @Test
+    void testRefreshToken_Success() {
+        com.example.inventory.dto.RefreshTokenRequest request = new com.example.inventory.dto.RefreshTokenRequest("valid-refresh-token");
+        RefreshToken mockRefresh = new RefreshToken(1L, testUser, "valid-refresh-token", java.time.Instant.now().plusSeconds(3600), false, java.time.Instant.now());
+
+        when(refreshTokenService.findByToken("valid-refresh-token")).thenReturn(Optional.of(mockRefresh));
+        when(refreshTokenService.verifyExpiration(mockRefresh)).thenReturn(mockRefresh);
+        when(jwtService.generateToken(any(), any(User.class))).thenReturn("new-jwt-access-token");
+
+        com.example.inventory.dto.TokenRefreshResponse response = authService.refreshToken(request);
+
+        assertNotNull(response);
+        assertEquals("new-jwt-access-token", response.getAccessToken());
+        assertEquals("valid-refresh-token", response.getRefreshToken());
+    }
+
+    @Test
+    void testRefreshToken_NotFound() {
+        com.example.inventory.dto.RefreshTokenRequest request = new com.example.inventory.dto.RefreshTokenRequest("invalid-token");
+
+        when(refreshTokenService.findByToken("invalid-token")).thenReturn(Optional.empty());
+
+        assertThrows(com.example.inventory.exception.TokenRefreshException.class, () -> authService.refreshToken(request));
     }
 }

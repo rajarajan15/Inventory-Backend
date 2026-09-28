@@ -38,4 +38,23 @@ public class AuthController {
         AuthResponse response = authService.login(request);
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/refresh")
+    @Operation(summary = "Refresh access token", description = "Generates a fresh access token using a valid refresh token")
+    public ResponseEntity<com.example.inventory.dto.TokenRefreshResponse> refreshToken(
+            @Valid @RequestBody com.example.inventory.dto.RefreshTokenRequest request) {
+        return ResponseEntity.ok(authService.refreshToken(request));
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Logout user", description = "Revokes the supplied refresh token")
+    public ResponseEntity<java.util.Map<String, String>> logout(
+            @RequestBody(required = false) com.example.inventory.dto.RefreshTokenRequest request) {
+        if (request != null && request.getRefreshToken() != null) {
+            authService.logout(request.getRefreshToken());
+        }
+        java.util.Map<String, String> response = new java.util.HashMap<>();
+        response.put("message", "Logged out successfully");
+        return ResponseEntity.ok(response);
+    }
 }

@@ -2,10 +2,14 @@ package com.example.inventory.service;
 
 import com.example.inventory.dto.AuthResponse;
 import com.example.inventory.dto.LoginRequest;
+import com.example.inventory.dto.RefreshTokenRequest;
 import com.example.inventory.dto.RegisterRequest;
+import com.example.inventory.dto.TokenRefreshResponse;
+import com.example.inventory.entity.RefreshToken;
 import com.example.inventory.entity.Role;
 import com.example.inventory.entity.User;
 import com.example.inventory.exception.BadRequestException;
+import com.example.inventory.exception.TokenRefreshException;
 import com.example.inventory.repository.UserRepository;
 import com.example.inventory.security.JwtService;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -24,15 +28,18 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final RefreshTokenService refreshTokenService;
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
-                       AuthenticationManager authenticationManager) {
+                       AuthenticationManager authenticationManager,
+                       RefreshTokenService refreshTokenService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.authenticationManager = authenticationManager;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Transactional
@@ -58,9 +65,11 @@ public class AuthService {
         extraClaims.put("name", savedUser.getName());
 
         String jwtToken = jwtService.generateToken(extraClaims, savedUser);
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(savedUser.getId());
 
         return new AuthResponse(
                 jwtToken,
+                refreshToken.getToken(),
                 savedUser.getId(),
                 savedUser.getName(),
                 savedUser.getEmail(),
@@ -68,6 +77,7 @@ public class AuthService {
         );
     }
 
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -85,13 +95,41 @@ public class AuthService {
         extraClaims.put("name", user.getName());
 
         String jwtToken = jwtService.generateToken(extraClaims, user);
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getId());
 
         return new AuthResponse(
                 jwtToken,
+                refreshToken.getToken(),
                 user.getId(),
                 user.getName(),
                 user.getEmail(),
                 user.getRole()
         );
+    }
+
+    @Transactional
+    public TokenRefreshResponse refreshToken(RefreshTokenRequest request) {
+        String requestRefreshToken = request.getRefreshToken();
+
+        return refreshTokenService.findByToken(requestRefreshToken)
+                .map(refreshTokenService::verifyExpiration)
+                .map(RefreshToken::getUser)
+                .map(user -> {
+                    Map<String, Object> extraClaims = new HashMap<>();
+                    extraClaims.put("role", user.getRole().name());
+                    extraClaims.put("userId", user.getId());
+                    extraClaims.put("name", user.getName());
+
+                    String newAccessToken = jwtService.generateToken(extraClaims, user);
+                    return new TokenRefreshResponse(newAccessToken, requestRefreshToken);
+                })
+                .orElseThrow(() -> new TokenRefreshException(requestRefreshToken, "Refresh token does not exist in database"));
+    }
+
+    @Transactional
+    public void logout(String refreshToken) {
+        if (refreshToken != null && !refreshToken.trim().isEmpty()) {
+            refreshTokenService.revokeByToken(refreshToken.trim());
+        }
     }
 }

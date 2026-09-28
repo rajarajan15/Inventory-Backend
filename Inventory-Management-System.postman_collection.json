@@ -15,6 +15,11 @@
       "key": "token",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -38,9 +43,13 @@
           "script": {
             "exec": [
               "var jsonData = pm.response.json();",
-              "if (jsonData.token) {",
-              "    pm.collectionVariables.set('token', jsonData.token);",
-              "    console.log('Saved token:', jsonData.token);",
+              "if (jsonData.accessToken) {",
+              "    pm.collectionVariables.set('token', jsonData.accessToken);",
+              "    console.log('Saved access token');",
+              "}",
+              "if (jsonData.refreshToken) {",
+              "    pm.collectionVariables.set('refreshToken', jsonData.refreshToken);",
+              "    console.log('Saved refresh token:', jsonData.refreshToken);",
               "}"
             ],
             "type": "text/javascript"
@@ -74,8 +83,13 @@
           "script": {
             "exec": [
               "var jsonData = pm.response.json();",
-              "if (jsonData.token) {",
-              "    pm.collectionVariables.set('token', jsonData.token);",
+              "if (jsonData.accessToken) {",
+              "    pm.collectionVariables.set('token', jsonData.accessToken);",
+              "    console.log('Saved access token');",
+              "}",
+              "if (jsonData.refreshToken) {",
+              "    pm.collectionVariables.set('refreshToken', jsonData.refreshToken);",
+              "    console.log('Saved refresh token:', jsonData.refreshToken);",
               "}"
             ],
             "type": "text/javascript"
@@ -335,6 +349,63 @@
           "raw": "{{baseUrl}}/api/users",
           "host": ["{{baseUrl}}"],
           "path": ["api", "users"]
+        }
+      }
+    },
+    {
+      "name": "15. Auth - Refresh Access Token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "if (jsonData.accessToken) {",
+              "    pm.collectionVariables.set('token', jsonData.accessToken);",
+              "    console.log('Refreshed access token successfully');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/refresh",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "refresh"]
+        }
+      }
+    },
+    {
+      "name": "16. Auth - Logout (Revoke Refresh Token)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/logout",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "logout"]
         }
       }
     }

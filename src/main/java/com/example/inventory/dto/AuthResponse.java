@@ -4,7 +4,9 @@ import com.example.inventory.entity.Role;
 
 public class AuthResponse {
 
-    private String token;
+    private String accessToken;
+    private String refreshToken;
+    private String token; // Alias to accessToken for backwards compatibility
     private String type = "Bearer";
     private Long id;
     private String name;
@@ -14,8 +16,20 @@ public class AuthResponse {
     public AuthResponse() {
     }
 
+    public AuthResponse(String accessToken, String refreshToken, Long id, String name, String email, Role role) {
+        this.accessToken = accessToken;
+        this.token = accessToken;
+        this.refreshToken = refreshToken;
+        this.type = "Bearer";
+        this.id = id;
+        this.name = name;
+        this.email = email;
+        this.role = role;
+    }
+
     public AuthResponse(String token, Long id, String name, String email, Role role) {
         this.token = token;
+        this.accessToken = token;
         this.type = "Bearer";
         this.id = id;
         this.name = name;
@@ -61,6 +75,23 @@ public class AuthResponse {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getAccessToken() {
+        return accessToken;
+    }
+
+    public void setAccessToken(String accessToken) {
+        this.accessToken = accessToken;
+        this.token = accessToken;
+    }
+
+    public String getRefreshToken() {
+        return refreshToken;
+    }
+
+    public void setRefreshToken(String refreshToken) {
+        this.refreshToken = refreshToken;
     }
 
     public Role getRole() {
