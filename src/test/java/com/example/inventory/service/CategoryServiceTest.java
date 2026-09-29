@@ -5,8 +5,13 @@ import com.example.inventory.dto.CategoryResponse;
 import com.example.inventory.entity.Category;
 import com.example.inventory.entity.Product;
 import com.example.inventory.exception.BadRequestException;
+import com.example.inventory.exception.ConflictException;
 import com.example.inventory.exception.ResourceNotFoundException;
 import com.example.inventory.repository.CategoryRepository;
+import com.example.inventory.repository.OrganizationRepository;
+import com.example.inventory.repository.ProductRepository;
+import com.example.inventory.security.TenantContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,15 +38,28 @@ class CategoryServiceTest {
 
     private Category testCategory;
 
+    @Mock
+    private OrganizationRepository organizationRepository;
+
+    @Mock
+    private ProductRepository productRepository;
+
+    private static final Long ORG_ID = 7L;
+
+    @AfterEach
+    void clearTenant() {
+        TenantContext.clear();
+    }
+
     @BeforeEach
     void setUp() {
+        TenantContext.set(ORG_ID, "acme");
         testCategory = new Category(1L, "Office Supplies", "Desk and paper products");
-        testCategory.setProducts(new ArrayList<>());
     }
 
     @Test
     void testGetAllCategories() {
-        when(categoryRepository.findAll()).thenReturn(List.of(testCategory));
+        when(categoryRepository.findByOrganizationId(ORG_ID)).thenReturn(List.of(testCategory));
 
         List<CategoryResponse> list = categoryService.getAllCategories();
 
@@ -51,7 +69,7 @@ class CategoryServiceTest {
 
     @Test
     void testGetCategoryById_Success() {
-        when(categoryRepository.findById(1L)).thenReturn(Optional.of(testCategory));
+        when(categoryRepository.findByIdAndOrganizationId(1L, ORG_ID)).thenReturn(Optional.of(testCategory));
 
         CategoryResponse response = categoryService.getCategoryById(1L);
 
@@ -62,7 +80,7 @@ class CategoryServiceTest {
 
     @Test
     void testGetCategoryById_NotFound() {
-        when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
+        when(categoryRepository.findByIdAndOrganizationId(99L, ORG_ID)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> categoryService.getCategoryById(99L));
     }
@@ -71,7 +89,7 @@ class CategoryServiceTest {
     void testCreateCategory_Success() {
         CategoryRequest request = new CategoryRequest("Furniture", "Desks and chairs");
 
-        when(categoryRepository.existsByName("Furniture")).thenReturn(false);
+        when(categoryRepository.existsByOrganizationIdAndNameIgnoreCase(ORG_ID, "Furniture")).thenReturn(false);
         when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> {
             Category c = invocation.getArgument(0);
             c.setId(2L);
@@ -89,15 +107,15 @@ class CategoryServiceTest {
     void testCreateCategory_DuplicateName() {
         CategoryRequest request = new CategoryRequest("Office Supplies", "Duplicate name");
 
-        when(categoryRepository.existsByName("Office Supplies")).thenReturn(true);
+        when(categoryRepository.existsByOrganizationIdAndNameIgnoreCase(ORG_ID, "Office Supplies")).thenReturn(true);
 
-        assertThrows(BadRequestException.class, () -> categoryService.createCategory(request));
+        assertThrows(ConflictException.class, () -> categoryService.createCategory(request));
         verify(categoryRepository, never()).save(any());
     }
 
     @Test
     void testDeleteCategory_Success() {
-        when(categoryRepository.findById(1L)).thenReturn(Optional.of(testCategory));
+        when(categoryRepository.findByIdAndOrganizationId(1L, ORG_ID)).thenReturn(Optional.of(testCategory));
 
         categoryService.deleteCategory(1L);
 
@@ -105,13 +123,11 @@ class CategoryServiceTest {
     }
 
     @Test
-    void testDeleteCategory_HasProducts_ThrowsBadRequest() {
-        Product p = new Product();
-        testCategory.getProducts().add(p);
+    void testDeleteCategory_HasProducts_ThrowsConflict() {
+        when(categoryRepository.findByIdAndOrganizationId(1L, ORG_ID)).thenReturn(Optional.of(testCategory));
+        when(productRepository.countByCategoryId(1L)).thenReturn(3L);
 
-        when(categoryRepository.findById(1L)).thenReturn(Optional.of(testCategory));
-
-        assertThrows(BadRequestException.class, () -> categoryService.deleteCategory(1L));
+        assertThrows(ConflictException.class, () -> categoryService.deleteCategory(1L));
         verify(categoryRepository, never()).delete(any());
     }
 }

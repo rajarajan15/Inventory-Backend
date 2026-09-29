@@ -1,5 +1,12 @@
 package com.example.inventory.controller;
 
+import com.example.inventory.dto.PageResponse;
+import com.example.inventory.dto.ProductSummaryResponse;
+import com.example.inventory.dto.StockMovementResponse;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
+import org.springframework.validation.annotation.Validated;
 import com.example.inventory.dto.ProductRequest;
 import com.example.inventory.dto.ProductResponse;
 import com.example.inventory.dto.StockOperationRequest;
@@ -16,9 +23,10 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/products")
+@RequestMapping("/api/orgs/{orgSlug}/products")
 @Tag(name = "Products & Inventory", description = "Endpoints for product CRUD, stock in/out, and low-stock monitoring")
 @SecurityRequirement(name = "bearerAuth")
+@Validated
 public class ProductController {
 
     private final ProductService productService;
@@ -28,11 +36,32 @@ public class ProductController {
     }
 
     @GetMapping
-    @Operation(summary = "List all products", description = "Accessible by ADMIN and STAFF. Supports optional search and category filter")
-    public ResponseEntity<List<ProductResponse>> getAllProducts(
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) Long categoryId) {
-        return ResponseEntity.ok(productService.getAllProducts(search, categoryId));
+    @Operation(summary = "List products (paged)", description = "Accessible by ADMIN and STAFF. Optional search (name/SKU) and category filter. "
+            + "sort = name|sku|price|quantity|createdAt|updatedAt, optionally followed by ,asc or ,desc")
+    public ResponseEntity<PageResponse<ProductResponse>> getProducts(
+            @RequestParam(required = false) @Size(max = 100, message = "Search text must be at most 100 characters") String search,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(defaultValue = "0") @Min(value = 0, message = "page cannot be negative") int page,
+            @RequestParam(defaultValue = "20") @Min(value = 1, message = "size must be at least 1")
+            @Max(value = ProductService.MAX_PAGE_SIZE, message = "size must be at most " + ProductService.MAX_PAGE_SIZE) int size,
+            @RequestParam(required = false) String sort) {
+        return ResponseEntity.ok(productService.searchProducts(search, categoryId, page, size, sort));
+    }
+
+    @GetMapping("/summary")
+    @Operation(summary = "Inventory totals", description = "Product count, total units, inventory value and low-stock count. Accessible by ADMIN and STAFF")
+    public ResponseEntity<ProductSummaryResponse> getSummary() {
+        return ResponseEntity.ok(productService.getSummary());
+    }
+
+    @GetMapping("/{id}/movements")
+    @Operation(summary = "Stock history", description = "Stock ledger for one product, newest first. Accessible by ADMIN and STAFF")
+    public ResponseEntity<PageResponse<StockMovementResponse>> getMovements(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") @Min(value = 0, message = "page cannot be negative") int page,
+            @RequestParam(defaultValue = "20") @Min(value = 1, message = "size must be at least 1")
+            @Max(value = ProductService.MAX_PAGE_SIZE, message = "size must be at most " + ProductService.MAX_PAGE_SIZE) int size) {
+        return ResponseEntity.ok(productService.getMovements(id, page, size));
     }
 
     @GetMapping("/low-stock")

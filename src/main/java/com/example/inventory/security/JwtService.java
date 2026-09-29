@@ -3,6 +3,7 @@ package com.example.inventory.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -17,21 +18,36 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
-    @Value("${jwt.secret}")
+    /** Widely published tutorial key that used to be this project's default; anyone could forge tokens with it. */
+    private static final String KNOWN_SAMPLE_SECRET = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970";
+
+    @Value("${jwt.secret:}")
     private String secretKeyString;
 
     @Value("${jwt.expiration}")
     private long jwtExpiration;
 
-    private SecretKey getSigningKey() {
-        byte[] keyBytes = secretKeyString.getBytes(StandardCharsets.UTF_8);
-        // Ensure at least 256 bits (32 bytes)
-        if (keyBytes.length < 32) {
-            byte[] padded = new byte[32];
-            System.arraycopy(keyBytes, 0, padded, 0, keyBytes.length);
-            return Keys.hmacShaKeyFor(padded);
+    private SecretKey signingKey;
+
+    /** Fails startup instead of silently running with a missing, short or publicly known signing key. */
+    @PostConstruct
+    void initSigningKey() {
+        if (secretKeyString == null || secretKeyString.isBlank()) {
+            throw new IllegalStateException("JWT_SECRET is not set. Configure a random secret of at least 32 characters "
+                    + "(e.g. `openssl rand -base64 48`) via the JWT_SECRET environment variable or application-local.properties.");
         }
-        return Keys.hmacShaKeyFor(keyBytes);
+        byte[] keyBytes = secretKeyString.getBytes(StandardCharsets.UTF_8);
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException("JWT_SECRET must be at least 32 bytes (256 bits) long.");
+        }
+        if (KNOWN_SAMPLE_SECRET.equalsIgnoreCase(secretKeyString.trim())) {
+            throw new IllegalStateException("JWT_SECRET is set to a publicly known sample key. Generate a new random secret.");
+        }
+        this.signingKey = Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    private SecretKey getSigningKey() {
+        return signingKey;
     }
 
     public String extractUsername(String token) {

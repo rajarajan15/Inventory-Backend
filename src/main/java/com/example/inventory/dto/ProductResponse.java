@@ -17,6 +17,7 @@ public class ProductResponse {
     private String categoryName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Long version;
 
     public ProductResponse() {
     }
@@ -133,5 +134,14 @@ public class ProductResponse {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public ProductResponse withVersion(Long version) {
+        this.version = version;
+        return this;
     }
 }

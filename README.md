@@ -1,113 +1,66 @@
-# Inventory Management System - Backend
+# StockWise Backend
 
-Enterprise-grade Spring Boot backend for the Inventory Management System, built according to the prototype blueprint with PostgreSQL persistence, Spring Security with JWT authentication, role-based authorization (ADMIN / STAFF), and Swagger OpenAPI documentation.
+Multi-tenant inventory management API (Spring Boot 3.3, Java 21, PostgreSQL 17). One StockWise super admin creates
+client organizations; each organization gets its own portal (`/o/{slug}`), admins and staff, and fully isolated data.
+The React frontend lives in `../inventory-frontend`. Product requirements: [PRD.md](PRD.md). Frontend contract:
+[FRONTEND_INTEGRATION_PRD.md](FRONTEND_INTEGRATION_PRD.md).
 
----
+## Architecture
 
-## 🛠️ Technology Stack
+| Concern | Approach |
+| --- | --- |
+| Layers | `controller` (HTTP + validation) → `service` (transactions, business rules) → `repository` (Spring Data JPA) |
+| Tenancy | `/api/orgs/{slug}/**` is resolved by `TenantFilter`; every repository query is scoped by organization id, and a user can only reach their own organization |
+| Auth | Stateless JWT access tokens (15 min) + hashed, per-session refresh tokens. Roles: `SUPER_ADMIN`, `ADMIN`, `STAFF`. `CurrentUser` is the single place that reads the authenticated user |
+| Schema | Flyway migrations in `src/main/resources/db/migration`; Hibernate only validates (`ddl-auto=validate`) |
+| Stock integrity | Stock in/out lock the product row; product edits use optimistic locking (`version`) and return `409` on stale data; every quantity change is written to the append-only `stock_movements` ledger |
+| Errors | `GlobalExceptionHandler` returns one JSON shape with a user-readable `message`, optional `validationErrors`, and a `requestId` |
+| Observability | `X-Request-Id` on every response and in every log line; health probes at `/actuator/health/{liveness,readiness}` |
+| Security headers | CSP, `X-Frame-Options: DENY`, HSTS, `nosniff`, `Referrer-Policy: no-referrer`; CORS without credentials |
 
-| Layer | Technology | Purpose |
-|---|---|---|
-| **Framework** | Spring Boot 3.3.4 | Core REST API & Business Logic |
-| **Language** | Java 21 / 25 | Modern Java LTS |
-| **Database** | PostgreSQL 17 | Relational persistence |
-| **Security** | Spring Security + JJWT 0.12 | JWT Authentication & RBAC |
-| **ORM** | Spring Data JPA / Hibernate | Entity mapping & repositories |
-| **Validation** | Jakarta Bean Validation | Request payload validation |
-| **Documentation**| SpringDoc OpenAPI 2.6.0 | Swagger UI interactive docs |
-| **Build Tool** | Maven 3.9.9 | Dependency management & packaging |
+## Run locally
 
----
+Prerequisites: Java 21+, PostgreSQL 17 with an empty database `inventory_db`.
 
-## 🔐 Roles & Permissions
+1. Put local secrets in `src/main/resources/application-local.properties` (gitignored):
+   ```properties
+   spring.datasource.password=...
+   jwt.secret=<random, at least 32 characters>
+   app.super-admin.password=<8-64 chars, upper, lower, number, special character>
+   # optional: real email via Gmail SMTP
+   app.mail.enabled=true
+   spring.mail.password=<Google App Password>
+   ```
+2. Start: `.\mvnw.cmd spring-boot:run`. Flyway creates or upgrades the schema on startup.
+3. Swagger UI: http://localhost:8080/swagger-ui.html (disabled in the `prod` profile unless `API_DOCS_ENABLED=true`).
 
-| Operation | Endpoint | ADMIN | STAFF |
-|---|---|:---:|:---:|
-| **Register & Login** | `POST /api/auth/**` | Public | Public |
-| **View Products** | `GET /api/products` | ✅ | ✅ |
-| **View Product Details** | `GET /api/products/{id}` | ✅ | ✅ |
-| **Create Product** | `POST /api/products` | ✅ | ❌ |
-| **Update Product** | `PUT /api/products/{id}` | ✅ | ❌ |
-| **Delete Product** | `DELETE /api/products/{id}` | ✅ | ❌ |
-| **Stock IN (Add inventory)** | `POST /api/products/{id}/stock/in` | ✅ | ✅ |
-| **Stock OUT (Reduce inventory)** | `POST /api/products/{id}/stock/out` | ✅ | ✅ |
-| **Low-Stock Detection** | `GET /api/products/low-stock` | ✅ | ✅ |
-| **View Categories** | `GET /api/categories` | ✅ | ✅ |
-| **Manage Categories** | `POST/PUT/DELETE /api/categories/**`| ✅ | ❌ |
-| **View System Users** | `GET /api/users` | ✅ | ❌ |
+Set `SEED_DEMO_DATA=true` for a `demo` organization (`admin@demo.com` / `Admin@123`, `staff@demo.com` / `Staff@123`).
 
----
+### With Docker
 
-## 🗄️ Database Schema
-
-### Users (`users`)
-- `id` (BIGSERIAL PRIMARY KEY)
-- `name` (VARCHAR NOT NULL)
-- `email` (VARCHAR UNIQUE NOT NULL)
-- `password` (VARCHAR BCrypt hashed)
-- `role` (VARCHAR: `ADMIN` or `STAFF`)
-- `created_at` (TIMESTAMP)
-
-### Categories (`categories`)
-- `id` (BIGSERIAL PRIMARY KEY)
-- `name` (VARCHAR UNIQUE NOT NULL)
-- `description` (TEXT)
-
-### Products (`products`)
-- `id` (BIGSERIAL PRIMARY KEY)
-- `name` (VARCHAR NOT NULL)
-- `description` (TEXT)
-- `sku` (VARCHAR UNIQUE NOT NULL)
-- `price` (NUMERIC(12,2) NOT NULL)
-- `quantity` (INTEGER NOT NULL DEFAULT 0)
-- `minimum_stock` (INTEGER NOT NULL DEFAULT 10)
-- `category_id` (BIGINT REFERENCES categories(id))
-- `created_at` (TIMESTAMP)
-- `updated_at` (TIMESTAMP)
-
----
-
-## 🚀 Pre-seeded Accounts & Test Data
-
-On the first application run, the system automatically initializes:
-
-- **Admin Account**:
-  - **Email**: `admin@inventory.com`
-  - **Password**: `Admin@123`
-  - **Role**: `ADMIN`
-- **Staff Account**:
-  - **Email**: `staff@inventory.com`
-  - **Password**: `Staff@123`
-  - **Role**: `STAFF`
-- **4 Categories**: Electronics, Office Supplies, Furniture, Networking
-- **8 Products**: Includes items above threshold as well as low-stock items for immediate testing.
-
----
-
-## 🏃 Running the Application
-
-### 1. Configure PostgreSQL
-Ensure PostgreSQL is running on port 5432 and create the database:
-```sql
-CREATE DATABASE inventory_db;
-```
-Configure your credentials in `src/main/resources/application.properties` or set environment variables:
 ```bash
-set DB_USERNAME=postgres
-set DB_PASSWORD=your_password
+cp .env.example .env   # fill in DB_PASSWORD, JWT_SECRET, SUPER_ADMIN_PASSWORD, ...
+docker compose up --build
 ```
 
-### 2. Build and Run with Maven
+## Configuration
+
+All settings come from environment variables (see [.env.example](.env.example)). Required: `DB_PASSWORD`, `JWT_SECRET`,
+and `SUPER_ADMIN_PASSWORD` on the first start. The app refuses to start with a missing, short or sample JWT secret.
+Use `SPRING_PROFILES_ACTIVE=prod` for deployments (API docs off, graceful shutdown, proxy headers honoured).
+
+## Database changes
+
+Never edit an applied migration. Add a new file `V{n}__description.sql` in `src/main/resources/db/migration`, update
+the entity, and run the tests: they apply every migration to H2 and fail if the entities and schema disagree.
+Databases created before Flyway was introduced are adopted automatically as version 1.
+
+## Tests and CI
+
 ```bash
-# Run unit tests
 .\mvnw.cmd test
-
-# Run application locally
-.\mvnw.cmd spring-boot:run
 ```
 
-### 3. Swagger UI & Interactive Documentation
-Once started, explore and test all endpoints interactively:
-- **Swagger UI**: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
-- **OpenAPI JSON**: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
-- **Health Check**: [http://localhost:8080/api/health](http://localhost:8080/api/health)
+Unit tests cover services and the password policy; integration tests (`MultiTenantFlowIntegrationTest`,
+`SecurityAndErrorHandlingTest`, `InventoryIntegrityTest`) run the full stack on H2, including tenant isolation, error
+responses, concurrent stock-outs and stale edits. `.github/workflows/ci.yml` runs the tests and builds the Docker image.

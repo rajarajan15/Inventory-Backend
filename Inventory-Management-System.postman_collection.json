@@ -1,311 +1,1357 @@
 {
   "info": {
-    "_postman_id": "inventory-mgmt-prototype-v1",
-    "name": "Inventory Management System API",
-    "description": "Collection of REST endpoints for the Inventory Management System backend (Spring Boot + PostgreSQL + JWT)",
+    "_postman_id": "stockwise-multi-tenant-v2",
+    "name": "StockWise API (multi-organization)",
+    "description": "StockWise backend v2. Flow: Public request -> Platform login -> create organization with admin invite -> copy the invitation token from the backend log (MAIL_ENABLED=false) into {{inviteToken}} -> accept -> Organization login. With SEED_DEMO_DATA=true you can use orgSlug=demo, admin@demo.com / Admin@123 directly.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
-  "event": [
-    {
-      "listen": "prerequest",
-      "script": {
-        "exec": [
-          "const xsrfToken = pm.cookies.get('XSRF-TOKEN');",
-          "if (xsrfToken) { pm.request.headers.upsert({ key: 'X-XSRF-TOKEN', value: xsrfToken }); }"
-        ],
-        "type": "text/javascript"
-      }
-    }
-  ],
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:8080",
-      "type": "string"
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "orgSlug",
+      "value": "demo"
+    },
+    {
+      "key": "superEmail",
+      "value": "stockwise.rr.2026@gmail.com"
+    },
+    {
+      "key": "superPassword",
+      "value": "ChangeMe@123"
+    },
+    {
+      "key": "superToken",
+      "value": ""
+    },
+    {
+      "key": "superRefreshToken",
+      "value": ""
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "inviteToken",
+      "value": ""
+    },
+    {
+      "key": "organizationId",
+      "value": "1"
+    },
+    {
+      "key": "subscriptionRequestId",
+      "value": "1"
+    },
+    {
+      "key": "userId",
+      "value": "2"
+    },
+    {
+      "key": "productId",
+      "value": "1"
     }
   ],
   "item": [
     {
-      "name": "1. Health Check",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/health",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "health"]
-        }
-      }
-    },
-    {
-      "name": "2. CSRF - Initialize Browser Session",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/auth/csrf",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "auth", "csrf"]
-        }
-      }
-    },
-    {
-      "name": "3. Auth - Login as Admin",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
+      "name": "0. Health",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            }
           }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"email\": \"admin@inventory.com\",\n  \"password\": \"Admin@123\"\n}"
         },
-        "url": {
-          "raw": "{{baseUrl}}/api/auth/login",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "auth", "login"]
-        }
-      }
-    },
-    {
-      "name": "4. Auth - Login as Staff",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
+        {
+          "name": "Readiness probe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health/readiness",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "health",
+                "readiness"
+              ]
+            }
           }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"email\": \"staff@inventory.com\",\n  \"password\": \"Staff@123\"\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/auth/login",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "auth", "login"]
         }
-      }
+      ]
     },
     {
-      "name": "5. Auth - Register New User",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
+      "name": "1. Public",
+      "item": [
+        {
+          "name": "Request StockWise (subscription request)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/subscription-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "subscription-requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"organizationName\": \"Flow Mart\",\n  \"contactName\": \"Fiona\",\n  \"contactEmail\": \"fiona@flowmart.test\",\n  \"contactPhone\": \"+91 9800000000\",\n  \"hasExistingData\": true,\n  \"message\": \"Two stores, ~3000 SKUs\"\n}"
+            }
           }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"name\": \"Sarah Warehouse\",\n  \"email\": \"sarah@inventory.com\",\n  \"password\": \"Secret@123\",\n  \"role\": \"STAFF\"\n}"
         },
-        "url": {
-          "raw": "{{baseUrl}}/api/auth/register",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "auth", "register"]
-        }
-      }
-    },
-    {
-      "name": "5. Categories - List All",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/categories",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "categories"]
-        }
-      }
-    },
-    {
-      "name": "6. Categories - Create Category (Admin)",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
+        {
+          "name": "Organization portal lookup",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/organizations/{{orgSlug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "organizations",
+                "{{orgSlug}}"
+              ]
+            }
           }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"name\": \"Storage & Packing\",\n  \"description\": \"Cardboard boxes, tape, bubble wrap\"\n}"
         },
-        "url": {
-          "raw": "{{baseUrl}}/api/categories",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "categories"]
+        {
+          "name": "Get invitation",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/invitations/{{inviteToken}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "invitations",
+                "{{inviteToken}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Accept invitation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/invitations/{{inviteToken}}/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "invitations",
+                "{{inviteToken}}",
+                "accept"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Fiona Admin\",\n  \"password\": \"Fiona@1234\"\n}"
+            }
+          }
         }
-      }
+      ]
     },
     {
-      "name": "7. Products - List All",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/products",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "products"]
-        }
-      }
-    },
-    {
-      "name": "8. Products - Search and Filter",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/products?search=Mouse",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "products"],
-          "query": [
+      "name": "2. Platform (Super Admin)",
+      "item": [
+        {
+          "name": "Super admin login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/platform/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "platform",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{superEmail}}\",\n  \"password\": \"{{superPassword}}\"\n}"
+            }
+          },
+          "event": [
             {
-              "key": "search",
-              "value": "Mouse"
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.accessToken) { pm.collectionVariables.set('superToken', body.accessToken); }",
+                  "if (body.refreshToken) { pm.collectionVariables.set('superRefreshToken', body.refreshToken); }"
+                ]
+              }
             }
           ]
-        }
-      }
-    },
-    {
-      "name": "9. Products - Low Stock Alert List",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/products/low-stock",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "products", "low-stock"]
-        }
-      }
-    },
-    {
-      "name": "10. Products - Create New Product (Admin)",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"name\": \"Wireless Presenter Remote\",\n  \"description\": \"Red laser pointer USB remote for presentations\",\n  \"sku\": \"ELEC-REM-009\",\n  \"price\": 39.99,\n  \"quantity\": 20,\n  \"minimumStock\": 5,\n  \"categoryId\": 1\n}"
         },
-        "url": {
-          "raw": "{{baseUrl}}/api/products",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "products"]
-        }
-      }
-    },
-    {
-      "name": "11. Stock IN - Add Inventory (Admin or Staff)",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
+        {
+          "name": "List pending subscription requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/platform/subscription-requests?status=PENDING",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "platform",
+                "subscription-requests"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                }
+              ]
+            }
           }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"quantity\": 10,\n  \"notes\": \"Received supplier purchase order PO-8841\"\n}"
         },
-        "url": {
-          "raw": "{{baseUrl}}/api/products/2/stock/in",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "products", "2", "stock", "in"]
-        }
-      }
-    },
-    {
-      "name": "12. Stock OUT - Reduce Inventory (Admin or Staff)",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
+        {
+          "name": "Create organization from request + invite admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/platform/organizations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "platform",
+                "organizations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Flow Mart\",\n  \"slug\": \"flow-mart\",\n  \"adminName\": \"Fiona\",\n  \"adminEmail\": \"fiona@flowmart.test\",\n  \"subscriptionRequestId\": \"{{subscriptionRequestId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.id) { pm.collectionVariables.set('organizationId', body.id); pm.collectionVariables.set('orgSlug', body.slug); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject subscription request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/platform/subscription-requests/{{subscriptionRequestId}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "platform",
+                "subscription-requests",
+                "{{subscriptionRequestId}}",
+                "reject"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"We are not onboarding this segment yet\"\n}"
+            }
           }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"quantity\": 2,\n  \"notes\": \"Customer order delivery ORD-1029\"\n}"
         },
-        "url": {
-          "raw": "{{baseUrl}}/api/products/2/stock/out",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "products", "2", "stock", "out"]
-        }
-      }
-    },
-    {
-      "name": "13. Stock OUT - Insufficient Stock Validation Test",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
+        {
+          "name": "List organizations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/platform/organizations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "platform",
+                "organizations"
+              ]
+            }
           }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"quantity\": 9999,\n  \"notes\": \"Attempt to reduce more than available\"\n}"
         },
-        "url": {
-          "raw": "{{baseUrl}}/api/products/2/stock/out",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "products", "2", "stock", "out"]
+        {
+          "name": "Get organization",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/platform/organizations/{{organizationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "platform",
+                "organizations",
+                "{{organizationId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List organization admins",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/platform/organizations/{{organizationId}}/admins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "platform",
+                "organizations",
+                "{{organizationId}}",
+                "admins"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Invite organization admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/platform/organizations/{{organizationId}}/admin-invitations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "platform",
+                "organizations",
+                "{{organizationId}}",
+                "admin-invitations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Second Admin\",\n  \"email\": \"admin2@flowmart.test\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Suspend organization",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/platform/organizations/{{organizationId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "platform",
+                "organizations",
+                "{{organizationId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"SUSPENDED\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reactivate organization",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/platform/organizations/{{organizationId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "platform",
+                "organizations",
+                "{{organizationId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACTIVE\"\n}"
+            }
+          }
         }
-      }
+      ]
     },
     {
-      "name": "14. Users - List Users (Admin Only)",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/users",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "users"]
+      "name": "3. Organization - Auth",
+      "item": [
+        {
+          "name": "Login as org admin (demo)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@demo.com\",\n  \"password\": \"Admin@123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.accessToken) { pm.collectionVariables.set('accessToken', body.accessToken); }",
+                  "if (body.refreshToken) { pm.collectionVariables.set('refreshToken', body.refreshToken); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as org staff (demo)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"staff@demo.com\",\n  \"password\": \"Staff@123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.accessToken) { pm.collectionVariables.set('accessToken', body.accessToken); }",
+                  "if (body.refreshToken) { pm.collectionVariables.set('refreshToken', body.refreshToken); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register (pending approval)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sarah Warehouse\",\n  \"email\": \"sarah@demo.test\",\n  \"password\": \"Secret@123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Refresh token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.accessToken) { pm.collectionVariables.set('accessToken', body.accessToken); }",
+                  "if (body.refreshToken) { pm.collectionVariables.set('refreshToken', body.refreshToken); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            }
+          }
         }
-      }
+      ]
     },
     {
-      "name": "16. Auth - Refresh Access Token",
-      "request": {
-        "method": "POST",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/auth/refresh",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "auth", "refresh"]
+      "name": "4. Organization - Setup & CSV",
+      "item": [
+        {
+          "name": "Get organization",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/organization",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "organization"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Setup: new organization (no existing data)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/organization/setup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "organization",
+                "setup"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hasExistingData\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Setup: existing data (CSV to follow)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/organization/setup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "organization",
+                "setup"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hasExistingData\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Import CSV (choose file)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/organization/import-csv",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "organization",
+                "import-csv"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            }
+          }
         }
-      }
+      ]
     },
     {
-      "name": "17. Auth - Logout (Revoke Refresh Token)",
-      "request": {
-        "method": "POST",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/auth/logout",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "auth", "logout"]
+      "name": "5. Organization - Members",
+      "item": [
+        {
+          "name": "List pending sign-ups",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/users?status=PENDING",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List all members",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "users"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Approve user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/users/{{userId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "users",
+                "{{userId}}",
+                "approve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reject user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/users/{{userId}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "users",
+                "{{userId}}",
+                "reject"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Disable user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/users/{{userId}}/disable",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "users",
+                "{{userId}}",
+                "disable"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Enable user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/users/{{userId}}/enable",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "users",
+                "{{userId}}",
+                "enable"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Invite member",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/users/invite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "users",
+                "invite"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sam\",\n  \"email\": \"sam@demo.test\",\n  \"role\": \"STAFF\"\n}"
+            }
+          }
         }
-      }
+      ]
+    },
+    {
+      "name": "6. Organization - Inventory",
+      "item": [
+        {
+          "name": "List categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "categories"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "categories"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Kitchenware\",\n  \"description\": \"Pots, pans and utensils\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List products (paged)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/products?page=0&size=20&sort=name",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                },
+                {
+                  "key": "sort",
+                  "value": "name"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/products?search=Mouse&sort=quantity,desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "Mouse"
+                },
+                {
+                  "key": "sort",
+                  "value": "quantity,desc"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Inventory summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/products/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "products",
+                "summary"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Low-stock products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/products/low-stock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "products",
+                "low-stock"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "products"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"USB-C Hub\",\n  \"description\": \"7-in-1 hub\",\n  \"sku\": \"ELEC-HUB-010\",\n  \"price\": 39.99,\n  \"quantity\": 20,\n  \"minimumStock\": 5,\n  \"categoryId\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Stock in",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/products/{{productId}}/stock/in",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "products",
+                "{{productId}}",
+                "stock",
+                "in"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 10,\n  \"notes\": \"Received shipment\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Stock out",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/products/{{productId}}/stock/out",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "products",
+                "{{productId}}",
+                "stock",
+                "out"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 2,\n  \"notes\": \"Sold\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Stock history",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgs/{{orgSlug}}/products/{{productId}}/movements?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgs",
+                "{{orgSlug}}",
+                "products",
+                "{{productId}}",
+                "movements"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }

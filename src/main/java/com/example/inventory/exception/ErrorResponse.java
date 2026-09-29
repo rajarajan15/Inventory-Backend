@@ -1,5 +1,7 @@
 package com.example.inventory.exception;
 
+import com.example.inventory.config.RequestIdFilter;
+import org.slf4j.MDC;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.time.LocalDateTime;
@@ -14,6 +16,8 @@ public class ErrorResponse {
     private String message;
     private String path;
     private Map<String, String> validationErrors;
+    /** Same value as the X-Request-Id response header and the log lines for this request. */
+    private String requestId = MDC.get(RequestIdFilter.MDC_KEY);
 
     public ErrorResponse() {
         this.timestamp = LocalDateTime.now();
@@ -82,5 +86,13 @@ public class ErrorResponse {
 
     public void setValidationErrors(Map<String, String> validationErrors) {
         this.validationErrors = validationErrors;
+    }
+
+    public String getRequestId() {
+        return requestId;
+    }
+
+    public void setRequestId(String requestId) {
+        this.requestId = requestId;
     }
 }

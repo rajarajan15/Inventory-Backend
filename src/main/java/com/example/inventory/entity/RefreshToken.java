@@ -4,20 +4,25 @@ import jakarta.persistence.*;
 
 import java.time.Instant;
 
+/**
+ * One row per login session, so signing in on another tab or device never invalidates existing sessions.
+ * Only the SHA-256 hash of the token is stored; the raw value is returned to the client once.
+ */
 @Entity
-@Table(name = "refresh_tokens")
+@Table(name = "refresh_tokens", indexes = @Index(name = "idx_refresh_tokens_user", columnList = "user_id"))
 public class RefreshToken {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne
-    @JoinColumn(name = "user_id", referencedColumnName = "id")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(nullable = false, unique = true)
-    private String token;
+    /** SHA-256 hex of the raw token. */
+    @Column(name = "token", nullable = false, unique = true, length = 64)
+    private String tokenHash;
 
     @Column(name = "expiry_date", nullable = false)
     private Instant expiryDate;
@@ -28,24 +33,22 @@ public class RefreshToken {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    /** Raw token, only populated right after creation so it can be handed to the client. Never persisted. */
+    @Transient
+    private String token;
+
     public RefreshToken() {
     }
 
-    public RefreshToken(Long id, User user, String token, Instant expiryDate, boolean revoked, Instant createdAt) {
-        this.id = id;
+    public RefreshToken(User user, String token, String tokenHash, Instant expiryDate) {
         this.user = user;
         this.token = token;
+        this.tokenHash = tokenHash;
         this.expiryDate = expiryDate;
-        this.revoked = revoked;
-        this.createdAt = createdAt;
+        this.createdAt = Instant.now();
     }
 
-    @PrePersist
-    protected void onCreate() {
-        if (this.createdAt == null) {
-            this.createdAt = Instant.now();
-        }
-    }
+    // Getters and Setters
 
     public Long getId() {
         return id;
@@ -67,8 +70,8 @@ public class RefreshToken {
         return token;
     }
 
-    public void setToken(String token) {
-        this.token = token;
+    public String getTokenHash() {
+        return tokenHash;
     }
 
     public Instant getExpiryDate() {

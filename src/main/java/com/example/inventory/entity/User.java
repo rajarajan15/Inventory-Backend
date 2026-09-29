@@ -30,10 +30,28 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private Role role;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private UserStatus status = UserStatus.PENDING;
+
+    /** Null only for the StockWise super admin. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "organization_id")
+    private Organization organization;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     public User() {
+    }
+
+    public User(String name, String email, String password, Role role, UserStatus status, Organization organization) {
+        this.name = name;
+        this.email = email;
+        this.password = password;
+        this.role = role;
+        this.status = status;
+        this.organization = organization;
     }
 
     public User(Long id, String name, String email, String password, Role role, LocalDateTime createdAt) {
@@ -95,6 +113,22 @@ public class User implements UserDetails {
         this.role = role;
     }
 
+    public UserStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(UserStatus status) {
+        this.status = status;
+    }
+
+    public Organization getOrganization() {
+        return organization;
+    }
+
+    public void setOrganization(Organization organization) {
+        this.organization = organization;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -137,6 +171,6 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return status == UserStatus.ACTIVE;
     }
 }

@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/categories")
+@RequestMapping("/api/orgs/{orgSlug}/categories")
 @Tag(name = "Categories", description = "Endpoints for managing inventory categories")
 @SecurityRequirement(name = "bearerAuth")
 public class CategoryController {

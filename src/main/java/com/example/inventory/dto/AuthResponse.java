@@ -12,8 +12,17 @@ public class AuthResponse {
     private String name;
     private String email;
     private Role role;
+    private String organizationSlug; // null for the super admin
+    private String organizationName;
 
     public AuthResponse() {
+    }
+
+    public AuthResponse(String accessToken, String refreshToken, Long id, String name, String email, Role role,
+                        String organizationSlug, String organizationName) {
+        this(accessToken, refreshToken, id, name, email, role);
+        this.organizationSlug = organizationSlug;
+        this.organizationName = organizationName;
     }
 
     public AuthResponse(String accessToken, String refreshToken, Long id, String name, String email, Role role) {
@@ -100,5 +109,21 @@ public class AuthResponse {
 
     public void setRole(Role role) {
         this.role = role;
+    }
+
+    public String getOrganizationSlug() {
+        return organizationSlug;
+    }
+
+    public void setOrganizationSlug(String organizationSlug) {
+        this.organizationSlug = organizationSlug;
+    }
+
+    public String getOrganizationName() {
+        return organizationName;
+    }
+
+    public void setOrganizationName(String organizationName) {
+        this.organizationName = organizationName;
     }
 }

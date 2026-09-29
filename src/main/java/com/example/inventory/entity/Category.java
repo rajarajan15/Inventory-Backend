@@ -3,26 +3,25 @@ package com.example.inventory.entity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
-import java.util.ArrayList;
-import java.util.List;
-
 @Entity
-@Table(name = "categories")
+@Table(name = "categories",
+        uniqueConstraints = @UniqueConstraint(name = "uk_categories_org_name", columnNames = {"organization_id", "name"}))
 public class Category {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String name;
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "organization_id", nullable = false)
     @JsonIgnore
-    private List<Product> products = new ArrayList<>();
+    private Organization organization;
 
     public Category() {
     }
@@ -33,12 +32,21 @@ public class Category {
         this.description = description;
     }
 
-    public Category(String name, String description) {
+    public Category(String name, String description, Organization organization) {
         this.name = name;
         this.description = description;
+        this.organization = organization;
     }
 
     // Getters and Setters
+
+    public Organization getOrganization() {
+        return organization;
+    }
+
+    public void setOrganization(Organization organization) {
+        this.organization = organization;
+    }
 
     public Long getId() {
         return id;
@@ -64,11 +72,4 @@ public class Category {
         this.description = description;
     }
 
-    public List<Product> getProducts() {
-        return products;
-    }
-
-    public void setProducts(List<Product> products) {
-        this.products = products;
-    }
 }

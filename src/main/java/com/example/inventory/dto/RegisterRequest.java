@@ -1,10 +1,14 @@
 package com.example.inventory.dto;
 
-import com.example.inventory.entity.Role;
+import com.example.inventory.validation.StrongPassword;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+/**
+ * Self-registration on an organization's portal. The role is always STAFF and the account stays
+ * PENDING until an organization admin approves it; admins are only created through invitations.
+ */
 public class RegisterRequest {
 
     @NotBlank(message = "Name is required")
@@ -12,23 +16,20 @@ public class RegisterRequest {
     private String name;
 
     @NotBlank(message = "Email is required")
-    @Email(message = "Valid email is required")
+    @Email(message = "Enter a valid email address")
+    @Size(max = 255, message = "Email must be at most 255 characters")
     private String email;
 
-    @NotBlank(message = "Password is required")
-    @Size(min = 6, message = "Password must be at least 6 characters")
+    @StrongPassword
     private String password;
-
-    private Role role; // Defaults to STAFF if null
 
     public RegisterRequest() {
     }
 
-    public RegisterRequest(String name, String email, String password, Role role) {
+    public RegisterRequest(String name, String email, String password) {
         this.name = name;
         this.email = email;
         this.password = password;
-        this.role = role;
     }
 
     public String getName() {
@@ -53,13 +54,5 @@ public class RegisterRequest {
 
     public void setPassword(String password) {
         this.password = password;
-    }
-
-    public Role getRole() {
-        return role;
-    }
-
-    public void setRole(Role role) {
-        this.role = role;
     }
 }

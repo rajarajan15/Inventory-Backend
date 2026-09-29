@@ -5,7 +5,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "products")
+@Table(name = "products",
+        uniqueConstraints = @UniqueConstraint(name = "uk_products_org_sku", columnNames = {"organization_id", "sku"}))
 public class Product {
 
     @Id
@@ -18,7 +19,7 @@ public class Product {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String sku;
 
     @Column(nullable = false, precision = 12, scale = 2)
@@ -30,9 +31,13 @@ public class Product {
     @Column(name = "minimum_stock", nullable = false)
     private Integer minimumStock = 10;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private Category category;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "organization_id", nullable = false)
+    private Organization organization;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -40,12 +45,28 @@ public class Product {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    /** Optimistic lock: an edit based on stale data fails instead of overwriting someone else's change. */
+    @Version
+    @Column(nullable = false)
+    private Long version = 0L;
+
     public Product() {
     }
 
     public Product(Long id, String name, String description, String sku, BigDecimal price,
                    Integer quantity, Integer minimumStock, Category category) {
         this.id = id;
+        this.name = name;
+        this.description = description;
+        this.sku = sku;
+        this.price = price;
+        this.quantity = quantity != null ? quantity : 0;
+        this.minimumStock = minimumStock != null ? minimumStock : 10;
+        this.category = category;
+    }
+
+    public Product(String name, String description, String sku, BigDecimal price,
+                   Integer quantity, Integer minimumStock, Category category) {
         this.name = name;
         this.description = description;
         this.sku = sku;
@@ -134,6 +155,14 @@ public class Product {
         this.minimumStock = minimumStock;
     }
 
+    public Organization getOrganization() {
+        return organization;
+    }
+
+    public void setOrganization(Organization organization) {
+        this.organization = organization;
+    }
+
     public Category getCategory() {
         return category;
     }
@@ -156,5 +185,9 @@ public class Product {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 }
