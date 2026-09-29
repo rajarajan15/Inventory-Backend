@@ -3,7 +3,8 @@
 Multi-tenant inventory management API (Spring Boot 3.3, Java 21, PostgreSQL 17). One StockWise super admin creates
 client organizations; each organization gets its own portal (`/o/{slug}`), admins and staff, and fully isolated data.
 The React frontend lives in `../inventory-frontend`. Product requirements: [PRD.md](PRD.md). Frontend contract:
-[FRONTEND_INTEGRATION_PRD.md](FRONTEND_INTEGRATION_PRD.md).
+[FRONTEND_INTEGRATION_PRD.md](FRONTEND_INTEGRATION_PRD.md). Developer guides: [docs/CODEBASE.md](docs/CODEBASE.md)
+(architecture and code) and [docs/DATABASE.md](docs/DATABASE.md) (tables and migrations).
 
 ## Architecture
 
